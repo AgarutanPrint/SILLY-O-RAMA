@@ -409,7 +409,9 @@ let votes = {};          // { questionKey: { Mom:'a'|'b', ... } }
 let customEntries = {};  // { sectionName: [{a,b}] }
 let ownerName = "";
 
-// ---------- storage helpers ----------
+// ---------- storage helpers (browser localStorage — works on any site/device it's opened on) ----------
+const STORAGE_PREFIX = 'silly-o-rama:';
+
 async function loadAll(){
   votes = await safeGet('votes', {});
   customEntries = await safeGet('customEntries', {});
@@ -417,14 +419,18 @@ async function loadAll(){
 }
 async function safeGet(key, fallback){
   try{
-    const r = await window.storage.get(key, false);
-    if(!r) return fallback;
-    return JSON.parse(r.value);
+    const raw = localStorage.getItem(STORAGE_PREFIX + key);
+    if(raw===null) return fallback;
+    return JSON.parse(raw);
   }catch(e){ return fallback; }
 }
 async function safeSet(key, value){
-  try{ await window.storage.set(key, JSON.stringify(value), false); }
+  try{ localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(value)); }
   catch(e){ console.error('storage save failed', e); }
+}
+async function safeDelete(key){
+  try{ localStorage.removeItem(STORAGE_PREFIX + key); }
+  catch(e){ console.error('storage delete failed', e); }
 }
 
 // ---------- build flat page list ----------
@@ -706,8 +712,8 @@ document.getElementById('resetBtn').addEventListener('click', ()=>resetModal.cla
 document.getElementById('resetCancel').addEventListener('click', ()=>resetModal.classList.remove('show'));
 document.getElementById('resetConfirm').addEventListener('click', async ()=>{
   votes = {}; customEntries = {};
-  try{ await window.storage.delete('votes', false); }catch(e){}
-  try{ await window.storage.delete('customEntries', false); }catch(e){}
+  await safeDelete('votes');
+  await safeDelete('customEntries');
   resetModal.classList.remove('show');
   render();
 });
